@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand Master Pro | Logo Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
+        body { font-family: 'Outfit', sans-serif; background: #f8fafc; overflow: hidden; }
+        .dark { background: #020617; color: white; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.3); }
+        .dark .glass { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.05); }
+        .timer-bar { transition: width 0.1s linear; height: 6px; border-radius: 10px; }
+        .logo-box { background: white; border-radius: 2rem; position: relative; overflow: hidden; box-shadow: inset 0 2px 10px rgba(0,0,0,0.05); }
+        .hidden-screen { display: none !important; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- HUD Overlay -->
+    <div class="fixed top-5 w-full max-w-lg flex justify-between px-6 z-50">
+        <div id="game-stats" class="hidden glass px-5 py-2 rounded-2xl shadow-xl flex items-center gap-4 border font-bold">
+            <span class="text-indigo-600">Score: <span id="score-val">0</span></span>
+            <span class="text-slate-300">|</span>
+            <span class="text-slate-500" id="q-label">1/5</span>
+        </div>
+        <button onclick="toggleTheme()" class="glass p-3 rounded-2xl shadow-xl border hover:scale-110 transition active:scale-90">
+            <span id="theme-toggle">🌙</span>
+        </button>
+    </div>
+
+    <div id="main-card" class="w-full max-w-md glass rounded-[3rem] shadow-2xl p-8 animate__animated animate__fadeIn">
+        
+        <!-- HOME SCREEN -->
+        <div id="home-screen" class="text-center">
+            <div class="mb-6 inline-block p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] rotate-12 shadow-2xl">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
+            </div>
+            <h1 class="text-4xl font-black mb-2 tracking-tight">Logo Quiz Pro</h1>
+            <p class="text-slate-500 dark:text-slate-400 mb-8 font-medium">Can you name the brands?</p>
+            
+            <div class="grid grid-cols-3 gap-3 mb-8">
+                <button onclick="setDiff('easy')" id="d-easy" class="diff-btn py-4 rounded-2xl border-2 border-transparent font-bold transition-all bg-slate-100 dark:bg-slate-800">Easy</button>
+                <button onclick="setDiff('medium')" id="d-medium" class="diff-btn py-4 rounded-2xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 font-bold transition-all">Med</button>
+                <button onclick="setDiff('hard')" id="d-hard" class="diff-btn py-4 rounded-2xl border-2 border-transparent font-bold transition-all bg-slate-100 dark:bg-slate-800">Hard</button>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-slate-900 dark:bg-indigo-600 text-white font-black py-6 rounded-3xl text-xl shadow-2xl hover:scale-[1.02] transition active:scale-95">
+                START GAME
+            </button>
+            <p id="best-score" class="mt-6 text-xs font-bold text-slate-400 uppercase tracking-widest">Best Score: 0</p>
+        </div>
+
+        <!-- GAME SCREEN -->
+        <div id="game-screen" class="hidden-screen">
+            <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full mb-8 overflow-hidden">
+                <div id="timer-bar" class="timer-bar bg-gradient-to-r from-indigo-500 to-purple-500 w-full"></div>
+            </div>
+
+            <div class="logo-box h-56 flex items-center justify-center mb-8 border-4 border-white dark:border-slate-700">
+                <div id="logo-loader" class="loader absolute"></div>
+                <img id="logo-display" src="" class="max-h-[160px] max-w-[80%] object-contain opacity-0 transition-opacity duration-300">
+            </div>
+
+            <div class="space-y-4">
+                <input type="text" id="user-input" placeholder="Type here..." autocomplete="off"
+                    class="w-full p-5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 dark:bg-slate-800 outline-none focus:border-indigo-600 text-center text-2xl font-black uppercase tracking-tighter shadow-sm">
+                <button onclick="checkAnswer()" class="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl text-lg shadow-lg">SUBMIT</button>
+            </div>
+            <div id="feedback" class="mt-6 text-center font-bold text-xl h-8"></div>
+        </div>
+
+        <!-- END SCREEN -->
+        <div id="end-screen" class="hidden-screen text-center">
+            <div id="final-emoji" class="text-7xl mb-4">🏆</div>
+            <h2 class="text-3xl font-black mb-1">Session Over</h2>
+            <div class="text-7xl font-black text-indigo-600 mb-8"><span id="final-score-val">0</span><span class="text-2xl text-slate-400">/5</span></div>
+            
+            <div id="recap" class="text-left bg-slate-100 dark:bg-slate-800/50 p-6 rounded-[2rem] mb-8 space-y-3 text-sm max-h-48 overflow-y-auto"></div>
+
+            <button onclick="location.reload()" class="w-full bg-slate-900 dark:bg-indigo-600 text-white font-black py-5 rounded-3xl shadow-xl">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <audio id="s-win" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
+    <audio id="s-lose" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3"></audio>
+
+    <script>
+        const LOGOS = {
+            easy: [
+                {n: "Apple", d: "apple.com"}, {n: "Nike", d: "nike.com"}, {n: "Google", d: "google.com"}, {n: "McDonald's", d: "mcdonalds.com"},
+                {n: "Amazon", d: "amazon.com"}, {n: "YouTube", d: "youtube.com"}, {n: "Facebook", d: "facebook.com"}, {n: "Instagram", d: "instagram.com"},
+                {n: "Netflix", d: "netflix.com"}, {n: "Spotify", d: "spotify.com"}, {n: "Tesla", d: "tesla.com"}, {n: "Starbucks", d: "starbucks.com"},
+                {n: "Disney", d: "disney.com"}, {n: "Coca-Cola", d: "cocacola.com"}, {n: "Pepsi", d: "pepsi.com"}, {n: "Samsung", d: "samsung.com"},
+                {n: "Toyota", d: "toyota.com"}, {n: "Visa", d: "visa.com"}, {n: "Mastercard", d: "mastercard.com"}, {n: "Lego", d: "lego.com"},
+                {n: "Microsoft", d: "microsoft.com"}, {n: "Intel", d: "intel.com"}, {n: "BMW", d: "bmw.com"}, {n: "IKEA", d: "ikea.com"},
+                {n: "Adidas", d: "adidas.com"}, {n: "Target", d: "target.com"}, {n: "Mercedes", d: "mercedes-benz.com"}, {n: "Burger King", d: "bk.com"}
+            ],
+            medium: [
+                {n: "Puma", d: "puma.com"}, {n: "Zomato", d: "zomato.com"}, {n: "Swiggy", d: "swiggy.com"}, {n: "Snapchat", d: "snapchat.com"},
+                {n: "LinkedIn", d: "linkedin.com"}, {n: "Uber", d: "uber.com"}, {n: "Ola", d: "olacabs.com"}, {n: "Paytm", d: "paytm.com"},
+                {n: "Flipkart", d: "flipkart.com"}, {n: "Airbnb", d: "airbnb.com"}, {n: "Dropbox", d: "dropbox.com"}, {n: "Reddit", d: "reddit.com"},
+                {n: "Discord", d: "discord.com"}, {n: "Slack", d: "slack.com"}, {n: "Pinterest", d: "pinterest.com"}, {n: "Zoom", d: "zoom.us"},
+                {n: "WhatsApp", d: "whatsapp.com"}, {n: "Telegram", d: "telegram.org"}, {n: "PhonePe", d: "phonepe.com"}, {n: "Nykaa", d: "nykaa.com"},
+                {n: "Myntra", d: "myntra.com"}, {n: "TikTok", d: "tiktok.com"}, {n: "Twitch", d: "twitch.tv"}, {n: "GitHub", d: "github.com"},
+                {n: "Firefox", d: "mozilla.org"}, {n: "PayPal", d: "paypal.com"}, {n: "Skype", d: "skype.com"}, {n: "Tinder", d: "tinder.com"}
+            ],
+            hard: [
+                {n: "Notion", d: "notion.so"}, {n: "Behance", d: "behance.net"}, {n: "Dribbble", d: "dribbble.com"}, {n: "Asana", d: "asana.com"},
+                {n: "Trello", d: "trello.com"}, {n: "Nokia", d: "nokia.com"}, {n: "Yahoo", d: "yahoo.com"}, {n: "Kodak", d: "kodak.com"},
+                {n: "BlackBerry", d: "blackberry.com"}, {n: "eBay", d: "ebay.com"}, {n: "Napster", d: "napster.com"}, {n: "MySpace", d: "myspace.com"},
+                {n: "Netscape", d: "netscape.com"}, {n: "Foodpanda", d: "foodpanda.com"}, {n: "Vine", d: "vine.co"}, {n: "Orkut", d: "orkut.com"},
+                {n: "Quora", d: "quora.com"}, {n: "Medium", d: "medium.com"}, {n: "Evernote", d: "evernote.com"}, {n: "Shopify", d: "shopify.com"},
+                {n: "Stripe", d: "stripe.com"}, {n: "Coinbase", d: "coinbase.com"}, {n: "Duolingo", d: "duolingo.com"}, {n: "SoundCloud", d: "soundcloud.com"},
+                {n: "Vimeo", d: "vimeo.com"}, {n: "Figma", d: "figma.com"}, {n: "Canva", d: "canva.com"}, {n: "Patreon", d: "patreon.com"}
+            ]
+        };
+
+        let currentDiff = 'medium';
+        let currentQueue = [];
+        let index = 0;
+        let score = 0;
+        let timeLeft = 100; // Multiplied for smoother bar
+        let timer;
+        let locked = false;
+
+        // Load Session Memory to prevent immediate repeats
+        let usedLogos = JSON.parse(sessionStorage.getItem('usedLogos')) || [];
+
+        document.getElementById('best-score').innerText = `Best Score: ${localStorage.getItem('logoBest') || 0}`;
+
+        function setDiff(lvl) {
+            currentDiff = lvl;
+            document.querySelectorAll('.diff-btn').forEach(b => {
+                b.classList.remove('border-indigo-600', 'bg-indigo-50', 'text-indigo-700');
+                b.classList.add('bg-slate-100', 'dark:bg-slate-800');
+            });
+            document.getElementById(`d-${lvl}`).classList.add('border-indigo-600', 'bg-indigo-50', 'text-indigo-700');
+        }
+
+        function startGame() {
+            // Logic to pick 5 logos that haven't been used this session
+            let pool = LOGOS[currentDiff].filter(item => !usedLogos.includes(item.n));
+            
+            // If we ran out of new logos, clear memory for this level
+            if (pool.length < 5) {
+                usedLogos = usedLogos.filter(n => !LOGOS[currentDiff].map(x=>x.n).includes(n));
+                pool = LOGOS[currentDiff];
+            }
+
+            // Shuffle and pick 5
+            currentQueue = pool.sort(() => 0.5 - Math.random()).slice(0, 5);
+            
+            // Add to used logos
+            currentQueue.forEach(item => usedLogos.push(item.n));
+            sessionStorage.setItem('usedLogos', JSON.stringify(usedLogos));
+
+            document.getElementById('home-screen').classList.add('hidden-screen');
+            document.getElementById('game-screen').classList.remove('hidden-screen');
+            document.getElementById('game-stats').classList.remove('hidden');
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (index >= 5) return showEnd();
+            locked = false;
+            timeLeft = 100;
+            const logo = currentQueue[index];
+            
+            document.getElementById('q-label').innerText = `${index + 1}/5`;
+            document.getElementById('user-input').value = "";
+            document.getElementById('feedback').innerText = "";
+            document.getElementById('user-input').focus();
+            
+            const loader = document.getElementById('logo-loader');
+            const img = document.getElementById('logo-display');
+            loader.classList.remove('hidden');
+            img.style.opacity = "0";
+            
+            // Primary Source
+            img.src = `https://logo.clearbit.com/${logo.d}?size=300`;
+            
+            img.onload = () => { loader.classList.add('hidden'); img.style.opacity = "1"; };
+            img.onerror = () => { img.src = `https://www.google.com/s2/favicons?domain=${logo.d}&sz=128`; };
+
+            runTimer();
+        }
+
+        function runTimer() {
+            clearInterval(timer);
+            const bar = document.getElementById('timer-bar');
+            timer = setInterval(() => {
+                timeLeft -= 0.5;
+                bar.style.width = timeLeft + "%";
+                if (timeLeft <= 0) checkAnswer(true);
+            }, 50);
+        }
+
+        function checkAnswer(isTimeout = false) {
+            if (locked) return;
+            locked = true;
+            clearInterval(timer);
+
+            const user = document.getElementById('user-input').value.trim().toLowerCase();
+            const actual = currentQueue[index].n.toLowerCase();
+            const fb = document.getElementById('feedback');
+
+            if (!isTimeout && (user === actual || (actual.includes(user) && user.length > 3))) {
+                score++;
+                fb.innerText = "EXCELLENT! ✅";
+                fb.className = "text-green-500 font-bold animate__animated animate__bounceIn";
+                document.getElementById('s-win').play();
+                confetti({ particleCount: 30, scalar: 0.7, origin: { y: 0.7 } });
+            } else {
+                fb.innerText = isTimeout ? "TIME OVER! ⏰" : "WRONG! ❌";
+                fb.className = "text-red-500 font-bold animate__animated animate__shakeX";
+                document.getElementById('s-lose').play();
+            }
+
+            document.getElementById('score-val').innerText = score;
+            setTimeout(() => { index++; nextQuestion(); }, 1500);
+        }
+
+        function showEnd() {
+            document.getElementById('game-screen').classList.add('hidden-screen');
+            document.getElementById('end-screen').classList.remove('hidden-screen');
+            document.getElementById('final-score-val').innerText = score;
+            
+            if(score > (localStorage.getItem('logoBest') || 0)) localStorage.setItem('logoBest', score);
+            if(score === 5) confetti({ particleCount: 150, spread: 70 });
+
+            document.getElementById('recap').innerHTML = currentQueue.map(q => 
+                `<div class="flex justify-between items-center border-b dark:border-slate-700 pb-2">
+                    <span class="font-bold text-slate-700 dark:text-slate-200">${q.n}</span>
+                    <span class="text-[10px] bg-white dark:bg-slate-700 px-2 py-1 rounded-lg shadow-sm">${q.d}</span>
+                </div>`
+            ).join('');
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            document.getElementById('theme-toggle').innerText = document.body.classList.contains('dark') ? '☀️' : '🌙';
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') checkAnswer(); });
+    </script>
+</body>
+</html>
